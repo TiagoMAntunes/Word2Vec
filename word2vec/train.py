@@ -6,7 +6,7 @@ import numpy as np
 import random
 import itertools
 
-def train(model, dataloader, optimizer, sampler, vocab_size, epochs=50, k = 5):
+def train(model, dataloader, optimizer, sampler, vocab_size, epochs=50, k = 2):
     model.train()
     for epoch in range(epochs):
         print(f'{"-"*10} Epoch {epoch} {"-"*10}')
@@ -100,5 +100,5 @@ if __name__ == '__main__':
 
     optimizer = torch.optim.SparseAdam(model.parameters())
 
-    train(model, train_dataloader, optimizer, sampler, VOCAB_SIZE, epochs=5)
+    train(model, train_dataloader, optimizer, sampler, VOCAB_SIZE)
 
