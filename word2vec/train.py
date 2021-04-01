@@ -2,12 +2,15 @@ import torch, torch.nn as nn
 from dataloader import WikiDataset
 from model import SkipGram
 import time
+import numpy as np
+import random
 
-def train(model, dataloader, optimizer, epochs=50, k = 5):
+def train(model, dataloader, optimizer, sampler, vocab_size, epochs=50, k = 5):
     for epoch in range(epochs):
         model.train()
 
         print(f'{"-"*10} Epoch {epoch} {"-"*10}')
+        avg_loss = 0
         start = time.time()
         # batches
         for i, v in enumerate(train_dataloader):
@@ -21,12 +24,14 @@ def train(model, dataloader, optimizer, epochs=50, k = 5):
             context = l[:,1].to(model.device)
 
             # generate negative samples
-            # FIXME
-            negative_samples = None
-
+            negative_samples = torch.tensor(sampler.sample(l.shape[0], k))
+            
+            # increment by 1 the values which are the same as the context (very ugly i know)
+            negative_samples = (negative_samples + (negative_samples.T - context).bool().logical_not().T * 1) % VOCAB_SIZE
+            
             # run model and get loss
             loss = model(target, context, negative_samples)
-
+            print(loss)
             avg_loss += loss.item()
             
             # update model
@@ -38,6 +43,32 @@ def train(model, dataloader, optimizer, epochs=50, k = 5):
         if epoch % 5 == 0:
             torch.save(model.state_dict(), f"{SAVE_FOLDER}cbow_{epoch}")
         # test(dev_dataloader)
+
+
+class NegativeSampler:
+    def __init__(self, filename, words_to_idx):
+        # Load word frequency and calculate power of 3/4 of every number
+        frequencies = {} # word -> frequency powered to 3/4
+        total_sum = 0
+        with open(f'{filename}') as f:
+            for line in f:
+                word, count = line.strip().split()
+                word = words_to_idx[word]
+                freq = int(count) ** (3/4)
+
+                frequencies[word] = freq
+                total_sum += freq
+
+        self.words = []
+        self.freqs = []
+        for word, frequency in frequencies.items():
+            self.words.append(word)
+            self.freqs.append(frequency / total_sum)
+
+
+    def sample(self, batch, k):
+        words = np.array(random.choices(population=self.words, weights=self.freqs, k=batch * k))
+        return words.reshape((batch, k))
 
 
 if __name__ == '__main__':
@@ -60,11 +91,14 @@ if __name__ == '__main__':
     train_dataset = WikiDataset(f'{FILENAME}.parsed', 2, words_to_idx)
     train_dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=BATCH_SIZE, num_workers=NUM_WORKERS)
 
+    # Get random sampler
+    sampler = NegativeSampler(f'{FILENAME}.parsed.count', words_to_idx)
+    
     model = SkipGram(VOCAB_SIZE, EMBEDDING_DIM)
     model.to(DEVICE)
     model.device = DEVICE
 
-    optimizer = torch.optim.SGD(model.parameters(), lr=0.2)
+    optimizer = torch.optim.SGD(model.parameters(), lr=0.01)
 
-    train(model, train_dataloader, optimizer)
+    train(model, train_dataloader, optimizer, sampler, VOCAB_SIZE)
 

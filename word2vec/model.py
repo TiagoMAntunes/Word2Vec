@@ -32,7 +32,7 @@ class SkipGram(nn.Module):
         y2 = self.activation(y2)
         y2 = torch.sum(y2, dim=1) # bxk -> bx1
 
-        return -y - y2
+        return (-y - y2).sum() / target.shape[0]
 
     def init_weights(self):
         irange = 0.5 / self.embedding_dim
