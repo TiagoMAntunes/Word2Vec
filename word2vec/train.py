@@ -6,9 +6,8 @@ import numpy as np
 import random
 
 def train(model, dataloader, optimizer, sampler, vocab_size, epochs=50, k = 5):
+    model.train()
     for epoch in range(epochs):
-        model.train()
-
         print(f'{"-"*10} Epoch {epoch} {"-"*10}')
         avg_loss = 0
         start = time.time()
@@ -31,7 +30,6 @@ def train(model, dataloader, optimizer, sampler, vocab_size, epochs=50, k = 5):
             
             # run model and get loss
             loss = model(target, context, negative_samples)
-            print(loss)
             avg_loss += loss.item()
             
             # update model

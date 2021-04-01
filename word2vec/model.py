@@ -35,6 +35,6 @@ class SkipGram(nn.Module):
         return (-y - y2).sum() / target.shape[0]
 
     def init_weights(self):
-        irange = 0.5 / self.embedding_dim
+        irange = 1
         self.target_embeddings.weight.data.uniform_(-irange,irange)
         self.context_embeddings.weight.data.uniform_(-irange,irange)
