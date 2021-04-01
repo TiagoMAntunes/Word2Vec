@@ -4,7 +4,9 @@ from model import SkipGram
 import time
 import numpy as np
 import random
+import itertools
 
+@profile
 def train(model, dataloader, optimizer, sampler, vocab_size, epochs=50, k = 5):
     model.train()
     for epoch in range(epochs):
@@ -23,7 +25,7 @@ def train(model, dataloader, optimizer, sampler, vocab_size, epochs=50, k = 5):
             context = l[:,1].to(model.device)
 
             # generate negative samples
-            negative_samples = torch.tensor(sampler.sample(l.shape[0], k))
+            negative_samples = torch.tensor(sampler.sample(l.shape[0], k)).to(model.device)
             
             # increment by 1 the values which are the same as the context (very ugly i know)
             negative_samples = (negative_samples + (negative_samples.T - context).bool().logical_not().T * 1) % VOCAB_SIZE
@@ -57,21 +59,22 @@ class NegativeSampler:
                 frequencies[word] = freq
                 total_sum += freq
 
+        table_size = 100000000 # 100M
         self.words = []
-        self.freqs = []
-        for word, frequency in frequencies.items():
-            self.words.append(word)
-            self.freqs.append(frequency / total_sum)
+        for word, count in frequencies.items():
+            count = int(count / total_sum * table_size)
+            self.words.extend([word] * count) 
 
-
+        self.words = np.array(self.words)
+        
     def sample(self, batch, k):
-        words = np.array(random.choices(population=self.words, weights=self.freqs, k=batch * k))
-        return words.reshape((batch, k))
+        words = np.random.randint(len(self.words), size=batch * k)
+        return self.words[words].reshape((batch, k))
 
 
 if __name__ == '__main__':
     EMBEDDING_DIM = 200
-    BATCH_SIZE = 4096
+    BATCH_SIZE = 8192
     NUM_WORKERS = 4
     DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
     
@@ -96,7 +99,7 @@ if __name__ == '__main__':
     model.to(DEVICE)
     model.device = DEVICE
 
-    optimizer = torch.optim.SGD(model.parameters(), lr=0.01)
+    optimizer = torch.optim.SparseAdam(model.parameters())
 
-    train(model, train_dataloader, optimizer, sampler, VOCAB_SIZE)
+    train(model, train_dataloader, optimizer, sampler, VOCAB_SIZE, epochs=5)
 
