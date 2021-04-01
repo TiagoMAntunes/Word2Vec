@@ -6,7 +6,6 @@ import numpy as np
 import random
 import itertools
 
-@profile
 def train(model, dataloader, optimizer, sampler, vocab_size, epochs=50, k = 5):
     model.train()
     for epoch in range(epochs):
