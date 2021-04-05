@@ -1,3 +1,4 @@
+import sys
 import torch, torch.nn as nn
 from dataloader import WikiDataset
 from model import SkipGram
@@ -6,7 +7,7 @@ import numpy as np
 import random
 import itertools
 
-def train(model, dataloader, optimizer, sampler, vocab_size, epochs=50, k = 2):
+def train(model, dataloader, optimizer, sampler, vocab_size, epochs=50, k = 2, save_path='models/'):
     model.train()
     for epoch in range(epochs):
         print(f'{"-"*10} Epoch {epoch} {"-"*10}')
@@ -39,8 +40,7 @@ def train(model, dataloader, optimizer, sampler, vocab_size, epochs=50, k = 2):
         
         end = time.time()
         print(f'Finished epoch {epoch}, took {end - start}s, average loss is {avg_loss / i}')
-        if epoch % 5 == 0:
-            torch.save(model.state_dict(), f"{SAVE_FOLDER}cbow_{epoch}")
+        torch.save(model.state_dict(), f"{save_path}skipgram_{epoch}")
         # test(dev_dataloader)
 
 
@@ -72,12 +72,18 @@ class NegativeSampler:
 
 
 if __name__ == '__main__':
-    EMBEDDING_DIM = 200
+    if len(sys.argv) < 3:
+        print(f'Usage: python3 {sys.argv[0]} <test filename> <embedding dim>+')
+        sys.exit(0)
+
+    # EMBEDDING_DIM = 200
+    EMBEDDING_DIMS = list(map(int, sys.argv[2:]))
+    FILENAME = sys.argv[1]
+    
     BATCH_SIZE = 8192
     NUM_WORKERS = 4
     DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
     
-    FILENAME = "tmp.txt"
     SAVE_FOLDER = 'models/'
     
     with open(f'{FILENAME}.vocab') as f:
@@ -88,17 +94,18 @@ if __name__ == '__main__':
     words_to_idx = {i:j for j,i in enumerate(vocab)}
 
     # Create dataset
-    train_dataset = WikiDataset(f'{FILENAME}.parsed', 2, words_to_idx)
+    train_dataset = WikiDataset(f'{FILENAME}.parsed', 1, words_to_idx)
     train_dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=BATCH_SIZE, num_workers=NUM_WORKERS)
 
     # Get random sampler
     sampler = NegativeSampler(f'{FILENAME}.parsed.count', words_to_idx)
     
-    model = SkipGram(VOCAB_SIZE, EMBEDDING_DIM)
-    model.to(DEVICE)
-    model.device = DEVICE
+    for emb_dim in EMBEDDING_DIMS:
+        model = SkipGram(VOCAB_SIZE, emb_dim)
+        model.to(DEVICE)
+        model.device = DEVICE
 
-    optimizer = torch.optim.SparseAdam(model.parameters())
+        optimizer = torch.optim.SparseAdam(model.parameters())
 
-    train(model, train_dataloader, optimizer, sampler, VOCAB_SIZE)
+        train(model, train_dataloader, optimizer, sampler, VOCAB_SIZE, epochs=50, save_path=f'{SAVE_FOLDER}{emb_dim}_')
 
