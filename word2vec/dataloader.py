@@ -35,12 +35,37 @@ class WikiData:
                 raise StopIteration()
             self.words.append(self.words_to_idx[line])
 
-        res = np.array([(self.words[self.word_range], self.words[self.word_range+i]) for i in (-2,-1,1,2)])
+        res = np.array([(self.words[self.word_range], self.words[self.word_range+i]) for i in range(-self.word_range, self.word_range+1) if i != 0])
         # advance window
         self.words = self.words[1:]
 
         return res
+
+class WikiDatasetNoDisk(torch.utils.data.Dataset):
+    def __init__(self, filename, word_range, words_to_idx):
+        with open(filename) as f:
+            words = list(map(lambda x: x.strip(), f.readlines())) # 1 word per line
+
+        res = []
+        prev_words = list(map(lambda x: words_to_idx[x], words[:word_range*2 + 1]))
+        del words[:word_range]
         
+        while words:
+            l = [(prev_words[word_range], prev_words[word_range+i]) for i in range(-word_range, word_range+1) if i != 0]
+            res.append(l)
+            
+            del prev_words[0]
+            prev_words.append(words_to_idx[words[0]])
+            del words[0]
+        
+        self.words = np.array(res)
+
+
+    def __getitem__(self, idx):
+        return self.words[idx]
+
+    def __len__(self):
+        return len(self.words)
 
 
 if __name__ == '__main__':
@@ -52,12 +77,14 @@ if __name__ == '__main__':
 
     # String2int conversion
     words_to_idx = {i:j for j,i in enumerate(vocab)}
+    idx_to_words = {i:j for i,j in enumerate(vocab)}
 
     BATCH_SIZE = 8096
     NUM_WORKERS = 4
     # Create dataset
-    train = WikiDataset(f'{filename}.parsed', 2, words_to_idx)
-    train_dataloader = torch.utils.data.DataLoader(train, batch_size=BATCH_SIZE, num_workers=NUM_WORKERS)
+    # train = WikiDataset(f'{filename}.parsed', 2, words_to_idx)
+    train = WikiDatasetNoDisk(f'{filename}.parsed', 2, words_to_idx)
+    train_dataloader = torch.utils.data.DataLoader(train, batch_size=BATCH_SIZE, num_workers=4)
     for i, v in enumerate(train_dataloader):
         l = v.reshape(v.shape[0] * v.shape[1], v.shape[2])
         print(i, l.shape)
