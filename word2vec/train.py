@@ -72,15 +72,16 @@ class NegativeSampler:
 
 
 if __name__ == '__main__':
-    if len(sys.argv) < 3:
-        print(f'Usage: python3 {sys.argv[0]} <test filename> <embedding dim>+')
+    if len(sys.argv) < 4:
+        print(f'Usage: python3 {sys.argv[0]} <test filename> <num_epochs> <embedding dim>+')
         sys.exit(0)
 
     # EMBEDDING_DIM = 200
-    EMBEDDING_DIMS = list(map(int, sys.argv[2:]))
+    EMBEDDING_DIMS = list(map(int, sys.argv[3:]))
     FILENAME = sys.argv[1]
+    EPOCHS = int(sys.argv[2])
     
-    BATCH_SIZE = 8192
+    BATCH_SIZE = 16384
     NUM_WORKERS = 4
     DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
     
@@ -107,5 +108,5 @@ if __name__ == '__main__':
 
         optimizer = torch.optim.SparseAdam(model.parameters())
 
-        train(model, train_dataloader, optimizer, sampler, VOCAB_SIZE, epochs=50, save_path=f'{SAVE_FOLDER}{emb_dim}_')
+        train(model, train_dataloader, optimizer, sampler, VOCAB_SIZE, epochs=EPOCHS, save_path=f'{SAVE_FOLDER}{emb_dim}_')
 
