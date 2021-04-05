@@ -2,3 +2,7 @@
 __pycache__
 *.examples
 *.vocab
+*.parsed*
+models/
+profile*
+*lprof
