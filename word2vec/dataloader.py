@@ -23,7 +23,6 @@ class WikiDataset(torch.utils.data.IterableDataset):
 class WikiData:
     def __init__(self, filenames, word_range, conversion):
         idx = torch.utils.data.get_worker_info().id
-        print(type(id), print(filenames[idx]))
         self.file = open(filenames[idx])
         self.words = []
         self.word_range = word_range
@@ -66,7 +65,7 @@ if __name__ == '__main__':
         sys.exit(0)
     VOCAB_NAME = sys.argv[1]
     FILENAMES = sys.argv[2:]
-
+    print(FILENAMES)
     with open(f'{VOCAB_NAME}') as f:
         vocab = sorted(f.readline().split())
     VOCAB_SIZE = len(vocab)
