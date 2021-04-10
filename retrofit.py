@@ -54,7 +54,7 @@ if __name__ == '__main__':
     # get embeddings
     emb_size = int(model_path.split('/')[-1].split('_')[0])
     model = SkipGram(VOCAB_SIZE, emb_size)
-    model.load_state_dict(torch.load(model_path))
+    model.load_state_dict(torch.load(model_path, map_location="cuda" if torch.cuda.is_available() else "cpu"))
 
     embeddings = model.target_embeddings.weight.data.numpy()
 
@@ -64,3 +64,6 @@ if __name__ == '__main__':
     
     result_embeddings = retrofit(embeddings, lexicon, iters)
 
+    model.target_embeddings.weight.data = torch.tensor(result_embeddings)
+
+    torch.save(model.state_dict(), model_path + '.retrofitted')

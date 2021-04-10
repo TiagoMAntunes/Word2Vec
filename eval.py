@@ -3,6 +3,7 @@ import sys
 import torch
 from word2vec.model import SkipGram
 from scipy.stats import spearmanr
+from sklearn.metrics.pairwise import cosine_similarity
 
 TEST_FILE_PATH = 'wordsim353/combined.tab'
 
@@ -24,11 +25,13 @@ if __name__ == '__main__':
     words_to_idx = {i:j for j,i in enumerate(vocab)}
     idx_to_words = {i:j for i,j in enumerate(vocab)}
 
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+
     models = []
     for name in sys.argv[2:]:
         emb_size = int(name.split('/')[-1].split('_')[0])
         models.append(SkipGram(VOCAB_SIZE, emb_size))
-        models[-1].load_state_dict(torch.load(name))
+        models[-1].load_state_dict(torch.load(name, map_location=device))
         models[-1].eval()
 
 
@@ -49,8 +52,8 @@ if __name__ == '__main__':
         with open(f'{sys.argv[2:][i].split("/")[-1]}.out', 'w+') as f:
             f.write(f'Word1,Word2,Result,Base Result\n')
             for line in lines:
-                a = emb(torch.tensor(line[0])).detach()
-                b = emb(torch.tensor(line[1])).detach()
-                f.write(f'{idx_to_words[line[0]]},{idx_to_words[line[1]]},{spearmanr(a,b)[0]},{(line[2]-5)/10}\n')
+                a = emb(torch.tensor(line[0])).detach().reshape(1, -1)
+                b = emb(torch.tensor(line[1])).detach().reshape(1, -1)
+                f.write(f'{idx_to_words[line[0]]},{idx_to_words[line[1]]},{cosine_similarity(a,b)[0][0]},{(line[2]-5)/5}\n')
             
 
